@@ -32,7 +32,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
  */
 io.on("connection", (socket) => {			// btn.addEventListener("click", (e) => {})
 	// Someone connected to me!
-	handleConnection(socket);
+	handleConnection(socket, io);
 });
 
 /**
