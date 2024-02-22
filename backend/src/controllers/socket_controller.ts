@@ -31,8 +31,8 @@ export const handleConnection = (socket: Socket<ClientToServerEvents, ServerToCl
 		// Always let the user in (for now)
 		callback(true);
 
-		// Emit userJoined to notify other users
-        socket.broadcast.emit("userJoined", username);
+		// // Emit userJoined to notify other users
+		socket.broadcast.emit("userJoined", username, Date.now());
 	});
 
 	// Handle user disconnecting

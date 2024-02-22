@@ -60,6 +60,27 @@ const addMessageToChat = (msg: ChatMessageData, ownMessage = false) => {
 	messagesEl.appendChild(msgEl);
 }
 
+	// Add notice to the chat
+	const addNoticeToChat = (msg: string, timestamp: number) => {
+	// Create a new LI element
+	const noticeEl = document.createElement("li");
+
+	// Set class of LI to "notice"
+	noticeEl.classList.add("notice");
+
+	// Get human readable time
+	const time = new Date(timestamp).toLocaleTimeString();
+
+	// Set content of the LI element to the message
+	noticeEl.innerHTML = `
+			<span class="content">${msg}</span>
+			<span class="time">${time}</span>
+		`;
+
+	// Append the LI element to the messages element
+	messagesEl.appendChild(noticeEl);
+}
+
 // Show chat view
 const showChatView = () => {
 	startView.classList.add("hide");
@@ -127,24 +148,16 @@ usernameFormEl.addEventListener("submit", (e) => {
 		}
 
 		// Show chat view
-		showChatView();
-
-
-    
+		showChatView();    
     });
         
 
     // Listen for new user joined
-    socket.on("userJoined", (username) => {
-    
-        // Get human readable time
-        const time = new Date().toLocaleTimeString();
-
-        const noticeEl = document.createElement("li");
-        noticeEl.classList.add("notice");
-        noticeEl.textContent = `${username} has joined the chat ${time}`;
-        messagesEl.appendChild(noticeEl);
-    });
+	socket.on("userJoined", (username, timestamp) => {
+		console.log("👶🏻 A new user has joined the chat:", username, timestamp);
+	
+		addNoticeToChat(`${username} has joined the chat`, timestamp);
+	});
     
     console.log("Emitted 'userJoinRequest' event to server, username: ", username);  
 });
