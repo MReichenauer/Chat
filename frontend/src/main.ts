@@ -93,6 +93,19 @@ const showWelcomeView = () => {
 	startView.classList.remove("hide");
 }
 
+// Socket handlers
+const handleUserJoinRequestCallback = (success: boolean) => {
+	console.log("Join was successful?", success);
+
+	if (!success) {
+		alert("NO ACCESS 4 U");
+		return;
+	}
+
+	// Show chat view
+	showChatView();    
+}
+
 // Listen for when connection is established
 socket.on("connect", () => {
 	console.log("💥 Connected to the server", socket.id);
@@ -101,6 +114,18 @@ socket.on("connect", () => {
 // Listen for when server got tired of us
 socket.on("disconnect", () => {
 	console.log("💀 Disconnected from the server");
+});
+
+// Listen for reconnection
+socket.io.on("reconnect", () => {
+	console.log("Reconnected to the server you old pirate!")
+	if (username) {
+		socket.emit("userJoinRequest", username, handleUserJoinRequestCallback);
+		addNoticeToChat("You're reconnected sailor", Date.now());
+	}
+
+	// Emit `userJoinRequest` event, but only if we were in chat previously
+
 });
 
 // Listen for when the nice server says hello
@@ -139,17 +164,7 @@ usernameFormEl.addEventListener("submit", (e) => {
 
 	// Emit `userJoinRequest`-event to the server and wait for acknowledgement
 	// BEFORE showing the chat view
-	socket.emit("userJoinRequest", username, (success) => {
-		console.log("Join was successful?", success);
-
-		if (!success) {
-			alert("NO ACCESS 4 U");
-			return;
-		}
-
-		// Show chat view
-		showChatView();    
-    });
+	socket.emit("userJoinRequest", username, handleUserJoinRequestCallback);
         
 
     // Listen for new user joined
