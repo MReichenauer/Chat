@@ -9,6 +9,8 @@ import {
 
  } from "@shared/types/SocketTypes";
 
+import prisma from "./src/prisma";
+
 // Initialize dotenv so it reads our `.env`-file
 dotenv.config();
 
@@ -25,7 +27,6 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 		credentials: true,
 	}
 });
-
 
 /**
  * Handle incoming Socket.IO connection
