@@ -1,5 +1,5 @@
 export {}
-
+import { Room } from "./Models"
 // Events emitted by the server to the client
 export interface ServerToClientEvents {
     hello: () => void;
@@ -12,6 +12,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
     sendChatMessage: (msg: ChatMessageData) => void;
     userJoinRequest: (username: string, callback: (success: boolean) => void) => void;
+    getRoomList: (callback: (rooms: Room[]) => void) => void;
 }
 
 // // Events between servers

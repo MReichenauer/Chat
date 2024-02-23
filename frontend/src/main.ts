@@ -6,6 +6,8 @@ import {
 } from "@shared/types/SocketTypes";
 import "./assets/scss/style.scss";
 
+
+
 const SOCKET_HOST = import.meta.env.VITE_SOCKET_HOST;
 console.log("SOCKET_HOST:", SOCKET_HOST);
 
@@ -89,7 +91,35 @@ const showChatView = () => {
 
 // Show welcome/"start" view
 const showWelcomeView = () => {
+	const connectBtnEL = document.querySelector("#connectBtn") as HTMLButtonElement;
+	const roomEL = document.querySelector("#room") as HTMLSelectElement;
+	
+	// Disable connect-button and clear room list
+	connectBtnEL.disabled = true;
+	roomEL.innerHTML = `<option value="" selected>Loading...</option>`;
+
+	// Request a list of rooms from the server
+	console.log("🏨 Requesting rooms");
+	socket.emit("getRoomList", (rooms) => {
+		console.log(rooms);
+
+	// Update room list
+	roomEL.innerHTML = rooms
+	.map(room => `<option value="${room.id}">${room.name}</option>`)
+	.join("");
+
+	// Enable connect-button
+	connectBtnEL.disabled = false;
+	});
+	// Once we get them, populate the dropdown with rooms
+
+	// After that, enable the connect button
+
+	console.log("Requesting rooms");
+
+	// Hide chat view
 	chatView.classList.add("hide");
+	// Unhide start view
 	startView.classList.remove("hide");
 }
 
@@ -108,6 +138,7 @@ const handleUserJoinRequestCallback = (success: boolean) => {
 
 // Listen for when connection is established
 socket.on("connect", () => {
+	showWelcomeView();
 	console.log("💥 Connected to the server", socket.id);
 });
 
