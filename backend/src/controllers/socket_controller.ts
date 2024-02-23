@@ -39,20 +39,24 @@ export const handleConnection = (
 
 	// Listen for a message
 	socket.on("sendChatMessage", (msg) => {
-		debug("NEW MESSAGE", socket.id, msg)
+		debug("NEW MESSAGE", socket.id, msg);
 
-		// Broadcast message to everyone connected to chat except the sender
-		socket.broadcast.emit("chatMessage", msg);
+		// Broadcast message to everyone connected to chat(room) except the sender
+		socket.to(msg.roomId).emit("chatMessage", msg);
 	});
 
 	// Listen for a user join request
-	socket.on("userJoinRequest", (username, callback) => {
-		debug("User %s wants to join the chat", username);
+	socket.on("userJoinRequest", (username, roomId, callback) => {
+		debug("User %s wants to join the chat in room %s", username, roomId);
+
+		// Join the user to the selected room
+		socket.join(roomId);
+
+		// Emit userJoined to notify other users in the room
+		socket.to(roomId).emit("userJoined", username, Date.now());
+
 		// Always let the user in (for now)
 		callback(true);
-
-		// // Emit userJoined to notify other users
-		socket.broadcast.emit("userJoined", username, Date.now());
 	});
 
 	// Handle user disconnecting

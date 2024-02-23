@@ -24,6 +24,10 @@ const messagesEl = document.querySelector("#messages") as HTMLUListElement;
 const chatView = document.querySelector("#chat-wrapper") as HTMLDivElement;
 const startView = document.querySelector("#start") as HTMLDivElement;
 
+// Room
+const roomEL = document.querySelector("#room") as HTMLSelectElement;
+
+
 // User Details
 let username: string | null = null;
 
@@ -151,12 +155,15 @@ socket.on("disconnect", () => {
 socket.io.on("reconnect", () => {
 	console.log("Reconnected to the server you old pirate!")
 	if (username) {
-		socket.emit("userJoinRequest", username, handleUserJoinRequestCallback);
+		const selectedRoomId = roomEL.value;
+		if (!selectedRoomId) {
+            console.error("No room selected.");
+            return;
+        }
+		// Emit `userJoinRequest` event, but only if we were in chat previously
+		socket.emit("userJoinRequest", username, selectedRoomId, handleUserJoinRequestCallback);
 		addNoticeToChat("You're reconnected sailor", Date.now());
 	}
-
-	// Emit `userJoinRequest` event, but only if we were in chat previously
-
 });
 
 // Listen for when the nice server says hello
@@ -167,13 +174,6 @@ socket.on("hello", () => {
 // Listen for new chat messages
 socket.on("chatMessage", (msg) => {
 	console.log("📨 YAY SOMEONE WROTE SOMETHING!!!!!!!", msg);
-
-	/**
-	 * @todo 1
-	 * Create a function `addMessageToChat` that takes the
-	 * `msg` object as a parameter and creates a new LI-element,
-	 * sets the content + styling and appends it to `messagesEl`
-	 */
 	addMessageToChat(msg);
 });
 
@@ -184,18 +184,20 @@ usernameFormEl.addEventListener("submit", (e) => {
 
 	// 💇
 	const trimmedUsername = usernameInputEl.value.trim();
+	const selectedRoomId = roomEL.value;
+	
 
 	// If no username, no join
-	if (!trimmedUsername) {
-		return;
-	}
+	if (!trimmedUsername || !selectedRoomId) {
+        return;
+    }
 
 	// Set username
 	username = trimmedUsername;
 
 	// Emit `userJoinRequest`-event to the server and wait for acknowledgement
 	// BEFORE showing the chat view
-	socket.emit("userJoinRequest", username, handleUserJoinRequestCallback);
+	socket.emit("userJoinRequest", username, selectedRoomId, handleUserJoinRequestCallback);
         
 
     // Listen for new user joined
@@ -214,9 +216,10 @@ messageFormEl.addEventListener("submit", (e) => {
 
 	// 💇
 	const trimmedMessage = messageEl.value.trim();
+	const selectedRoomId = roomEL.value;
 
-	// If no message, no send
-	if (!trimmedMessage || !username) {
+	// If no message, no username, no room. No send
+	if (!trimmedMessage || !username || !selectedRoomId) {
 		return;
 	}
 
@@ -225,18 +228,14 @@ messageFormEl.addEventListener("submit", (e) => {
 		content: trimmedMessage,
 		timestamp: Date.now(),
 		username,
+		roomId: roomEL.value
 	}
 
 	// Send (emit) the message to the server
 	socket.emit("sendChatMessage", msg);
 	console.log("Emitted 'sendChatMessage' event to server", msg);
 
-	/**
-	 * @todo 2
-	 * Extend the `addMessageToChat` function to know if the msg
-	 * was sent by us, and if so add `.own-message` class to the
-	 * LI-element before appending it to `messagesEl`
-	 */
+
 	addMessageToChat(msg, true);
 
 	// Clear the input field
