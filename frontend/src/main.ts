@@ -2,7 +2,8 @@ import { io, Socket } from "socket.io-client";
 import {
 	ChatMessageData,
 	ClientToServerEvents,
-	ServerToClientEvents
+	ServerToClientEvents,
+	UserJoinResponse
 } from "@shared/types/SocketTypes";
 import "./assets/scss/style.scss";
 
@@ -64,6 +65,9 @@ const addMessageToChat = (msg: ChatMessageData, ownMessage = false) => {
 
 	// Append the LI element to the messages element
 	messagesEl.appendChild(msgEl);
+	
+	// Scroll to the bottom of messages list
+	msgEl.scrollIntoView({ behavior: "smooth"});
 }
 
 	// Add notice to the chat
@@ -85,6 +89,8 @@ const addMessageToChat = (msg: ChatMessageData, ownMessage = false) => {
 
 	// Append the LI element to the messages element
 	messagesEl.appendChild(noticeEl);
+	// Scroll to the bottom of messages list
+	noticeEl.scrollIntoView({ behavior: "smooth"});
 }
 
 // Show chat view
@@ -128,13 +134,17 @@ const showWelcomeView = () => {
 }
 
 // Socket handlers
-const handleUserJoinRequestCallback = (success: boolean) => {
-	console.log("Join was successful?", success);
+const handleUserJoinRequestCallback = (response: UserJoinResponse) => {
+	console.log("Join was successful?", response);
 
-	if (!success) {
+	if (!response.success || !response.room) {
 		alert("NO ACCESS 4 U");
 		return;
 	}
+
+	// Update chat title with room name
+	const chatTitleEl = document.querySelector("#chat-title") as HTMLHeadingElement;
+	chatTitleEl.innerText = `Chat room: ${response.room.name}`;
 
 	// Show chat view
 	showChatView();    
@@ -182,7 +192,7 @@ usernameFormEl.addEventListener("submit", (e) => {
 	e.preventDefault();
 
 
-	// 💇
+	// Get username and room
 	const trimmedUsername = usernameInputEl.value.trim();
 	const selectedRoomId = roomEL.value;
 	

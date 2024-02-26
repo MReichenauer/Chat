@@ -46,17 +46,39 @@ export const handleConnection = (
 	});
 
 	// Listen for a user join request
-	socket.on("userJoinRequest", (username, roomId, callback) => {
+	socket.on("userJoinRequest", async (username, roomId, callback) => {
 		debug("User %s wants to join the chat in room %s", username, roomId);
 
+		// Get room from database
+		const room = await prisma.room.findUnique({
+			where: {
+				id: roomId,
+			}
+		});
+		// If room was not found, respond with success: false
+		if (!room) {
+			callback({
+				success: false,
+				room: null,
+			});
+			return;
+		}
 		// Join the user to the selected room
 		socket.join(roomId);
 
-		// Emit userJoined to notify other users in the room
-		socket.to(roomId).emit("userJoined", username, Date.now());
+		// Let everyone know user joined the room
+		io.to(roomId).emit("userJoined", username, Date.now());
 
-		// Always let the user in (for now)
-		callback(true);
+		// Respond with room info
+		// Here we could check if username is uniq
+		callback({
+			success: true,
+			room: {
+				id:room.id,
+				name:room.name,
+				users:[],
+			}
+		});
 	});
 
 	// Handle user disconnecting
