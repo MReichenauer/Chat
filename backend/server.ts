@@ -2,6 +2,7 @@ import app from "./src/app";
 import http from "http";
 import * as dotenv from "dotenv";
 import { Server } from "socket.io";
+import { instrument } from "@socket.io/admin-ui";
 import { handleConnection } from "./src/controllers/socket_controller";
 import {
 	ClientToServerEvents,
@@ -23,10 +24,21 @@ const PORT = process.env.PORT || 3000;
 const httpServer = http.createServer(app);
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
 	cors: {
-		origin: "*",
+		origin: ["http://localhost:5173", "https://admin.socket.io"],
 		credentials: true,
 	}
 });
+
+// Set up socket.io admin
+if(process.env.SOCKET_IO_ADMIN_PASSWORD){
+	instrument(io, {
+		auth: {
+			type: "basic",
+			username: "admin",
+			password: process.env.SOCKET_IO_ADMIN_PASSWORD, // HINT: sonjasserie123
+		}
+	});
+}
 
 /**
  * Handle incoming Socket.IO connection
@@ -36,10 +48,20 @@ io.on("connection", (socket) => {			// btn.addEventListener("click", (e) => {})
 	handleConnection(socket, io);
 });
 
-/**
- * Listen on provided port, on all network interfaces.
- */
-httpServer.listen(PORT);
+// Delete all users from the database
+prisma.user.deleteMany()
+	.then (() => {
+		console.log("Deleted all the users")
+		/**
+		 * Listen on provided port, on all network interfaces.
+		 */
+		httpServer.listen(PORT);
+	})
+	.catch (err => {
+		console.error("Could not delete all users", err);
+	});
+
+
 
 /**
  * Event listener for HTTP server "error" event.
@@ -51,11 +73,11 @@ httpServer.on("error", (err: NodeJS.ErrnoException) => {
 
 	switch (err.code) {
 		case "EACCES":
-			console.error(`🦸🏻 Port ${PORT} requires elevated privileges`);
+			console.error(`Port ${PORT} requires elevated privileges`);
 			process.exit(1);
 			break;
 		case "EADDRINUSE":
-			console.error(`🛑 Port ${PORT} is already in use in another of your fifty thousand terminals 😜`);
+			console.error(`Port ${PORT} is already in use in another of your fifty thousand terminals`);
 			process.exit(1);
 			break;
 		default:
@@ -67,5 +89,5 @@ httpServer.on("error", (err: NodeJS.ErrnoException) => {
  * Event listener for HTTP server "listening" event.
  */
 httpServer.on("listening", () => {
-	console.log(`🚀 Yay, server started on http://localhost:${PORT}`);
+	console.log(`Server started on http://localhost:${PORT}`);
 });

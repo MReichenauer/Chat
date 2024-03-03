@@ -6,6 +6,7 @@ import {
 	UserJoinResponse
 } from "@shared/types/SocketTypes";
 import "./assets/scss/style.scss";
+import { User } from "@shared/types/Models";
 
 
 
@@ -35,8 +36,24 @@ let username: string | null = null;
 // Connect to Socket.IO Server
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SOCKET_HOST);
 
+// Add multiple messages to the chat
+const addMessagesToChat = (msgs: ChatMessageData[]) => {
+
+	// Clear any previous messages from the chat
+	messagesEl.innerHTML= "";
+
+	addNoticeToChat("You're connected sailor", Date.now());
+
+	// Loop over messages and add them to the chat
+	msgs.forEach(msg => {
+		addMessageToChat(msg);
+	});
+}
+
+
 // Add message to the chat
 const addMessageToChat = (msg: ChatMessageData, ownMessage = false) => {
+	
 	// Create a new LI element
 	const msgEl = document.createElement("li");
 
@@ -72,6 +89,7 @@ const addMessageToChat = (msg: ChatMessageData, ownMessage = false) => {
 
 	// Add notice to the chat
 	const addNoticeToChat = (msg: string, timestamp: number) => {
+
 	// Create a new LI element
 	const noticeEl = document.createElement("li");
 
@@ -89,8 +107,22 @@ const addMessageToChat = (msg: ChatMessageData, ownMessage = false) => {
 
 	// Append the LI element to the messages element
 	messagesEl.appendChild(noticeEl);
+
 	// Scroll to the bottom of messages list
 	noticeEl.scrollIntoView({ behavior: "smooth"});
+}
+
+// update online users list
+const updateOnlineUsers = (users: User[]) => {
+	const onlineUsersEl = document.querySelector("#online-users") as HTMLUListElement;
+
+	onlineUsersEl.innerHTML = users
+		.map(user =>
+			user.id === socket.id
+				? `<li class="me"><span>&#x1f9B8;</span> ${user.username}</li>`
+				: `<li><span>&#x1f47d;</span> ${user.username}</li>`
+		)
+		.join("");
 }
 
 // Show chat view
@@ -109,10 +141,8 @@ const showWelcomeView = () => {
 	roomEL.innerHTML = `<option value="" selected>Loading...</option>`;
 
 	// Request a list of rooms from the server
-	console.log("🏨 Requesting rooms");
 	socket.emit("getRoomList", (rooms) => {
-		console.log(rooms);
-
+		
 	// Update room list
 	roomEL.innerHTML = rooms
 	.map(room => `<option value="${room.id}">${room.name}</option>`)
@@ -121,12 +151,7 @@ const showWelcomeView = () => {
 	// Enable connect-button
 	connectBtnEL.disabled = false;
 	});
-	// Once we get them, populate the dropdown with rooms
-
-	// After that, enable the connect button
-
-	console.log("Requesting rooms");
-
+	
 	// Hide chat view
 	chatView.classList.add("hide");
 	// Unhide start view
@@ -146,6 +171,13 @@ const handleUserJoinRequestCallback = (response: UserJoinResponse) => {
 	const chatTitleEl = document.querySelector("#chat-title") as HTMLHeadingElement;
 	chatTitleEl.innerText = `Chat room: ${response.room.name}`;
 
+	// Add messages to chat
+	console.log("Messages history", response.room.messages);
+	addMessagesToChat(response.room.messages);
+
+	// Update userlist with users in the room
+	updateOnlineUsers(response.room.users);
+
 	// Show chat view
 	showChatView();    
 }
@@ -153,19 +185,17 @@ const handleUserJoinRequestCallback = (response: UserJoinResponse) => {
 // Listen for when connection is established
 socket.on("connect", () => {
 	showWelcomeView();
-	console.log("💥 Connected to the server", socket.id);
 });
 
 // Listen for when server got tired of us
 socket.on("disconnect", () => {
-	console.log("💀 Disconnected from the server");
 });
 
 // Listen for reconnection
 socket.io.on("reconnect", () => {
-	console.log("Reconnected to the server you old pirate!")
 	if (username) {
 		const selectedRoomId = roomEL.value;
+
 		if (!selectedRoomId) {
             console.error("No room selected.");
             return;
@@ -176,27 +206,34 @@ socket.io.on("reconnect", () => {
 	}
 });
 
-// Listen for when the nice server says hello
+// Listen for when the server says hello
 socket.on("hello", () => {
-	console.log("🤩 Hello! Is it me you're looking for?");
+	console.log("Looking for me?");
 });
 
 // Listen for new chat messages
 socket.on("chatMessage", (msg) => {
-	console.log("📨 YAY SOMEONE WROTE SOMETHING!!!!!!!", msg);
 	addMessageToChat(msg);
+});
+
+// listen for a updated list of online users
+socket.on("onlineUsers", (users) => {
+	updateOnlineUsers(users);
+})
+
+   // Listen for user left
+   socket.on("userLeft", (username, timestamp) => {
+	addNoticeToChat(`${username} has left the chat`, timestamp);
 });
 
 // Get username from form and then show chat
 usernameFormEl.addEventListener("submit", (e) => {
 	e.preventDefault();
 
-
 	// Get username and room
 	const trimmedUsername = usernameInputEl.value.trim();
 	const selectedRoomId = roomEL.value;
 	
-
 	// If no username, no join
 	if (!trimmedUsername || !selectedRoomId) {
         return;
@@ -206,25 +243,19 @@ usernameFormEl.addEventListener("submit", (e) => {
 	username = trimmedUsername;
 
 	// Emit `userJoinRequest`-event to the server and wait for acknowledgement
-	// BEFORE showing the chat view
 	socket.emit("userJoinRequest", username, selectedRoomId, handleUserJoinRequestCallback);
-        
 
     // Listen for new user joined
 	socket.on("userJoined", (username, timestamp) => {
-		console.log("👶🏻 A new user has joined the chat:", username, timestamp);
 	
 		addNoticeToChat(`${username} has joined the chat`, timestamp);
-	});
-    
-    console.log("Emitted 'userJoinRequest' event to server, username: ", username);  
+	}); 
 });
 
 // Send a message to the server when form is submitted
 messageFormEl.addEventListener("submit", (e) => {
 	e.preventDefault();
 
-	// 💇
 	const trimmedMessage = messageEl.value.trim();
 	const selectedRoomId = roomEL.value;
 
@@ -243,9 +274,7 @@ messageFormEl.addEventListener("submit", (e) => {
 
 	// Send (emit) the message to the server
 	socket.emit("sendChatMessage", msg);
-	console.log("Emitted 'sendChatMessage' event to server", msg);
-
-
+	
 	addMessageToChat(msg, true);
 
 	// Clear the input field

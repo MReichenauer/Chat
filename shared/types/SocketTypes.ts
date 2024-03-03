@@ -5,6 +5,8 @@ export interface ServerToClientEvents {
     hello: () => void;
     chatMessage: (msg: ChatMessageData) => void;
     userJoined: (username: string, timestamp: number) => void;
+    userLeft: (username: string, timestamp: number) => void;
+    onlineUsers: (users: User[]) => void;
     
 }
 
@@ -15,10 +17,6 @@ export interface ClientToServerEvents {
     getRoomList: (callback: (rooms: Room[]) => void) => void;
 }
 
-// // Events between servers
-// export interface InterServerEvents {
-// }
-
 // Message payload
 export interface ChatMessageData {
     content: string;
@@ -27,12 +25,13 @@ export interface ChatMessageData {
     roomId: string;
 }
 
-export interface RoomWithUsers extends Room {
+export interface RoomInfo extends Room {
     users: User[];
+    messages: ChatMessageData[];
 }
 
 // User join response
 export interface UserJoinResponse {
     success: boolean;
-    room: RoomWithUsers | null; 
+    room: RoomInfo | null; 
 }
